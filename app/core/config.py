@@ -5,7 +5,7 @@ from pydantic import Field
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    api_keys: str = Field(default="demo-key", alias="API_KEYS")
+    api_keys: str = Field(..., alias="API_KEYS")
     fmcsa_webkey: str | None = Field(default=None, alias="FMCSA_WEBKEY")
     loads_file: str = Field(default="loads.seed.json", alias="LOADS_FILE")
 
