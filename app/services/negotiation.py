@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import uuid
 from typing import Optional, Tuple, Literal
 
 from fastapi import HTTPException
 
-from app.core.config import settings
 from app.core.state import LOCK, NEGOTIATIONS, METRICS, now_ts
 from app.schemas.domain import NegotiationPolicy, NegotiationState, Load
 
@@ -43,28 +41,37 @@ def decide(policy: NegotiationPolicy, carrier_offer: float, round_num: int) -> T
     return "counter", round(counter, 2)
 
 
-def start(call_id: Optional[str], load: Load, carrier_mc: Optional[str], carrier_initial_offer: float) -> NegotiationState:
-    policy = make_policy(load.rate)
-    negotiation_id = f"neg_{uuid.uuid4().hex[:12]}"
+def start(
+    call_id: Optional[str],
+    load: Load,
+    mc_number: Optional[str],
+    carrier_initial_offer: float,
+) -> Tuple[NegotiationState, Decision, Optional[float]]:
+    """
+    Creates negotiation state for round 1 AND computes the round-1 decision.
+    Returns: (state, decision, counter_offer)
+    """
+    policy = make_policy(load.loadboard_rate)
+    if not call_id:
+        raise HTTPException(status_code=400, detail="call_id is required for step-based negotiation")
 
-    decision, counter = decide(policy, carrier_initial_offer, 1)
+    decision, counter_offer = decide(policy, carrier_initial_offer, 1)
 
     st = NegotiationState(
-        negotiation_id=negotiation_id,
         call_id=call_id,
         load=load,
-        carrier_mc=carrier_mc,
+        mc_number=mc_number,
         status="in_progress",
         round=1,
         policy=policy,
         last_carrier_offer=carrier_initial_offer,
-        last_counter_offer=counter,
+        last_counter_offer=counter_offer,
         final_rate=None,
         created_at=now_ts(),
     )
 
     with LOCK:
-        NEGOTIATIONS[negotiation_id] = st
+        NEGOTIATIONS[call_id] = st
         METRICS.negotiations_started += 1
 
         # If decision is an immediate decline, finalize now
@@ -74,30 +81,29 @@ def start(call_id: Optional[str], load: Load, carrier_mc: Optional[str], carrier
             METRICS.completed_rounds_total += st.round
             METRICS.completed_count += 1
 
-    return st
+    return st, decision, counter_offer
 
 
-def get(negotiation_id: str) -> NegotiationState:
+def get(call_id: str) -> NegotiationState:
     with LOCK:
-        st = NEGOTIATIONS.get(negotiation_id)
+        st = NEGOTIATIONS.get(call_id)
     if not st:
         raise HTTPException(status_code=404, detail="Negotiation not found")
     return st
 
 
-def counter(negotiation_id: str, carrier_offer: float) -> Tuple[NegotiationState, Decision, Optional[float]]:
+def counter(call_id: str, carrier_offer: float) -> Tuple[NegotiationState, Decision, Optional[float]]:
     with LOCK:
-        st = NEGOTIATIONS.get(negotiation_id)
+        st = NEGOTIATIONS.get(call_id)
         if not st:
             raise HTTPException(status_code=404, detail="Negotiation not found")
         if st.status != "in_progress":
             raise HTTPException(status_code=409, detail=f"Negotiation already {st.status}")
 
         st.round += 1
-        st.last_carrier_offer = carrier_offer
+        st.last_carrier_offer = float(carrier_offer)
 
         decision, counter_offer = decide(st.policy, carrier_offer, st.round)
-
         st.last_counter_offer = counter_offer
 
         if decision == "decline":
@@ -109,9 +115,9 @@ def counter(negotiation_id: str, carrier_offer: float) -> Tuple[NegotiationState
         return st, decision, counter_offer
 
 
-def accept(negotiation_id: str, final_rate: float) -> NegotiationState:
+def accept(call_id: str, final_rate: float) -> NegotiationState:
     with LOCK:
-        st = NEGOTIATIONS.get(negotiation_id)
+        st = NEGOTIATIONS.get(call_id)
         if not st:
             raise HTTPException(status_code=404, detail="Negotiation not found")
         if st.status != "in_progress":
@@ -127,9 +133,9 @@ def accept(negotiation_id: str, final_rate: float) -> NegotiationState:
         return st
 
 
-def decline(negotiation_id: str, reason: str) -> NegotiationState:
+def decline(call_id: str, reason: str) -> NegotiationState:
     with LOCK:
-        st = NEGOTIATIONS.get(negotiation_id)
+        st = NEGOTIATIONS.get(call_id)
         if not st:
             raise HTTPException(status_code=404, detail="Negotiation not found")
         if st.status != "in_progress":
@@ -141,3 +147,8 @@ def decline(negotiation_id: str, reason: str) -> NegotiationState:
         METRICS.completed_count += 1
 
         return st
+
+
+def exists(call_id: str) -> bool:
+    with LOCK:
+        return call_id in NEGOTIATIONS

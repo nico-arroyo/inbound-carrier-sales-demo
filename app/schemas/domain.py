@@ -1,52 +1,62 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Literal, Optional
-
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict
+from typing import Any, Dict, Optional
 
 
 class Load(BaseModel):
     model_config = ConfigDict(extra="ignore")
+
     load_id: str
     origin: str
     destination: str
+    pickup_datetime: str
+    delivery_datetime: str
     equipment_type: str
-    rate: float
-    pickup_date: Optional[str] = None
+    loadboard_rate: float
+
     notes: Optional[str] = None
+    weight: Optional[float] = None
+    commodity_type: Optional[str] = None
+    num_of_pieces: Optional[int] = None
+    miles: Optional[float] = None
+    dimensions: Optional[str] = None
 
 
 class CallState(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     call_id: str
     started_at: float
     ended_at: Optional[float] = None
     from_number: Optional[str] = None
+    metadata: Dict[str, Any] = {}
     outcome: Optional[str] = None
-    summary: Dict[str, Any] = Field(default_factory=dict)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    summary: Dict[str, Any] = {}
 
 
 class NegotiationPolicy(BaseModel):
     target: float
     min: float
     max: float
-    max_rounds: int
-
-
-NegStatus = Literal["in_progress", "accepted", "declined"]
+    max_rounds: int = 3
 
 
 class NegotiationState(BaseModel):
-    negotiation_id: str
-    call_id: Optional[str]
+    model_config = ConfigDict(extra="ignore")
+
+    call_id: Optional[str] = None
     load: Load
-    carrier_mc: Optional[str] = None
-    status: NegStatus = "in_progress"
-    round: int = 1
+    mc_number: Optional[str] = None
+
+    status: str  # "in_progress" | "accepted" | "declined"
+    round: int
     policy: NegotiationPolicy
+
     last_carrier_offer: float
     last_counter_offer: Optional[float] = None
     final_rate: Optional[float] = None
+
     created_at: float
 
 

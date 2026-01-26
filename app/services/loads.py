@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
-
+from typing import List, Optional
 from fastapi import HTTPException
 
 from app.core.state import LOADS
@@ -9,56 +8,35 @@ from app.schemas.domain import Load
 
 
 def _norm(s: Optional[str]) -> str:
-    return (s or "").strip().lower()
+    if not s:
+        return ""
+    return " ".join(s.strip().lower().split())
 
 
-def score_load(load: Load, origin: Optional[str], destination: Optional[str], equipment: Optional[str]) -> float:
-    score = 0.0
-    o = _norm(origin)
-    d = _norm(destination)
-    e = _norm(equipment)
-
-    lo = _norm(load.origin)
-    ld = _norm(load.destination)
-    le = _norm(load.equipment_type)
-
-    if o:
-        if lo == o:
-            score += 3
-        elif o in lo or lo in o:
-            score += 2
-
-    if d:
-        if ld == d:
-            score += 3
-        elif d in ld or ld in d:
-            score += 2
-
-    if e:
-        if le == e:
-            score += 2
-
-    score += min(load.rate / 10000.0, 0.5)
-    return score
+def _match_field(actual: str, wanted: Optional[str]) -> bool:
+    if wanted is None or wanted == "":
+        return True
+    return _norm(actual) == _norm(wanted)
 
 
 def search(origin: Optional[str], destination: Optional[str], equipment: Optional[str], limit: int) -> List[Load]:
-    scored: List[Tuple[float, Load]] = []
+    origin = origin or None
+    destination = destination or None
+    equipment = (equipment or "").strip().lower() or None
 
+    results: List[Load] = []
     for load in LOADS:
+        if not _match_field(load.origin, origin):
+            continue
+        if not _match_field(load.destination, destination):
+            continue
         if equipment and _norm(load.equipment_type) != _norm(equipment):
             continue
+        results.append(load)
 
-        s = score_load(load, origin, destination, equipment)
+    results.sort(key=lambda l: float(l.loadboard_rate), reverse=True)
 
-        # If user specified lane constraints, avoid ultra-weak matches
-        if (origin or destination) and s < 2:
-            continue
-
-        scored.append((s, load))
-
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return [l for _, l in scored[:limit]]
+    return results[: max(1, int(limit or 1))]
 
 
 def get_by_id(load_id: str) -> Load:

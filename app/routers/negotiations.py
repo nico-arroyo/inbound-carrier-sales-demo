@@ -1,94 +1,58 @@
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.security import require_api_key
-from app.core.state import LOCK, CALLS
-from app.schemas.api import (
-    NegotiationStartRequest,
-    NegotiationCounterRequest,
-    NegotiationAcceptRequest,
-    NegotiationDeclineRequest,
-    NegotiationResponse,
-)
+from app.schemas.negotiation import NegotiationStepRequest, NegotiationStepResponse
 from app.services.loads import get_by_id
-from app.services.negotiation import start, counter as do_counter, accept as do_accept, decline as do_decline
+from app.services.negotiation import (
+    start,
+    counter as do_counter,
+    accept as do_accept,
+    exists as negotiation_exists,
+)
 
-router = APIRouter(prefix="/v1/negotiations", tags=["negotiations"], dependencies=[Depends(require_api_key)])
+router = APIRouter(
+    prefix="/v1/negotiations",
+    tags=["negotiations"],
+    dependencies=[Depends(require_api_key)],
+)
 
 
-@router.post("/start", response_model=NegotiationResponse)
-def start_neg(req: NegotiationStartRequest) -> NegotiationResponse:
+@router.post("/step", response_model=NegotiationStepResponse)
+def step(req: NegotiationStepRequest) -> NegotiationStepResponse:
+    if not req.call_id:
+        raise HTTPException(status_code=400, detail="call_id is required")
+
     load = get_by_id(req.load_id)
-    st = start(req.call_id, load, req.carrier_mc, req.carrier_initial_offer)
 
-    if req.call_id:
-        with LOCK:
-            cs = CALLS.get(req.call_id)
-            if cs:
-                cs.summary["negotiation_id"] = st.negotiation_id
-                cs.summary["load_id"] = st.load.load_id
-
-    if st.policy.min <= st.last_carrier_offer <= st.policy.max:
-        decision = "accept"
-        counter_offer = None
-    elif st.status == "declined":
-        decision = "decline"
-        counter_offer = None
+    # Round 1: initialize + decide in one place (service layer)
+    if not negotiation_exists(req.call_id):
+        st, decision, counter_offer = start(
+            call_id=req.call_id,
+            load=load,
+            mc_number=req.mc_number,
+            carrier_initial_offer=req.carrier_offer,
+        )
     else:
-        decision = "counter"
-        counter_offer = st.last_counter_offer
+        # Round >=2: counter/accept/decline decision happens in service
+        st, decision, counter_offer = do_counter(req.call_id, req.carrier_offer)
 
-    return NegotiationResponse(
-        negotiation_id=st.negotiation_id,
+    # If accepted at this step, finalize so workflow can transfer
+    transfer = False
+    final_rate = st.final_rate
+
+    if decision == "accept":
+        st = do_accept(req.call_id, req.carrier_offer)
+        transfer = True
+        final_rate = st.final_rate
+        counter_offer = None  # accepted means no counter
+
+    return NegotiationStepResponse(
+        call_id=req.call_id,
         status=st.status,
         round=st.round,
         decision=decision,
         counter_offer=counter_offer,
-        final_rate=st.final_rate,
-        policy=st.policy,
-    )
-
-
-@router.post("/{negotiation_id}/counter", response_model=NegotiationResponse)
-def counter_neg(
-    negotiation_id: str = Path(...),
-    req: NegotiationCounterRequest = None,
-) -> NegotiationResponse:
-    st, decision, counter_offer = do_counter(negotiation_id, req.carrier_offer)
-
-    return NegotiationResponse(
-        negotiation_id=st.negotiation_id,
-        status=st.status,
-        round=st.round,
-        decision=decision,
-        counter_offer=counter_offer,
-        final_rate=st.final_rate,
-        policy=st.policy,
-    )
-
-
-@router.post("/{negotiation_id}/accept", response_model=NegotiationResponse)
-def accept_neg(negotiation_id: str, req: NegotiationAcceptRequest) -> NegotiationResponse:
-    st = do_accept(negotiation_id, req.final_rate)
-    return NegotiationResponse(
-        negotiation_id=st.negotiation_id,
-        status=st.status,
-        round=st.round,
-        decision="accept",
-        counter_offer=None,
-        final_rate=st.final_rate,
-        policy=st.policy,
-    )
-
-
-@router.post("/{negotiation_id}/decline", response_model=NegotiationResponse)
-def decline_neg(negotiation_id: str, req: NegotiationDeclineRequest) -> NegotiationResponse:
-    st = do_decline(negotiation_id, req.reason or "declined")
-    return NegotiationResponse(
-        negotiation_id=st.negotiation_id,
-        status=st.status,
-        round=st.round,
-        decision="decline",
-        counter_offer=None,
-        final_rate=st.final_rate,
-        policy=st.policy,
+        final_rate=final_rate,
+        policy=st.policy.model_dump() if getattr(st, "policy", None) else None,
+        transfer_to_rep=transfer,
     )

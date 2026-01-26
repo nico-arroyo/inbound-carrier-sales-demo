@@ -12,5 +12,4 @@ async def verify(req: CarrierVerifyRequest):
         result = await verify_carrier(req.mc_number)
         return result
     except FmcsaError as e:
-        # 502 because this is an upstream dependency failure/misconfig
         raise HTTPException(status_code=502, detail=str(e))
