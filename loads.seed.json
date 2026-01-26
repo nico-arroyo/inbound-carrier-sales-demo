@@ -1,0 +1,35 @@
+[
+  {
+    "load_id": "L-001",
+    "origin": "Atlanta, GA",
+    "destination": "Dallas, TX",
+    "equipment_type": "dry_van",
+    "rate": 2600,
+    "pickup_date": "2026-01-26",
+    "notes": "FCFS pickup. No hazmat."
+  },
+  {
+    "load_id": "L-002",
+    "origin": "Atlanta, GA",
+    "destination": "Houston, TX",
+    "equipment_type": "reefer",
+    "rate": 3100,
+    "pickup_date": "2026-01-26"
+  },
+  {
+    "load_id": "L-003",
+    "origin": "Nashville, TN",
+    "destination": "Dallas, TX",
+    "equipment_type": "dry_van",
+    "rate": 2200,
+    "pickup_date": "2026-01-27"
+  },
+  {
+    "load_id": "L-004",
+    "origin": "Atlanta, GA",
+    "destination": "Charlotte, NC",
+    "equipment_type": "flatbed",
+    "rate": 1200,
+    "pickup_date": "2026-01-26"
+  }
+]
