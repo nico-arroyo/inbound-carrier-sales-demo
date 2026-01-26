@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.core.state import LOCK, METRICS
-from app.models.api import MetricsOverview
+from app.schemas.api import MetricsOverview
 
 
 def overview() -> MetricsOverview:

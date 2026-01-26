@@ -1,24 +1,16 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, HTTPException
 
-from app.core.security import require_api_key
-from app.core.state import LOCK, CALLS
-from app.models.api import CarrierVerifyRequest, CarrierVerifyResponse
-from app.services.fmcsa import verify_mc
+from app.schemas.carriers import CarrierVerifyRequest, CarrierVerifyResponse
+from app.services.fmcsa import FmcsaError, verify_carrier
 
-router = APIRouter(prefix="/v1/carriers", tags=["carriers"], dependencies=[Depends(require_api_key)])
+router = APIRouter(prefix="/carriers", tags=["carriers"])
 
 
-@router.post("/verify-mc", response_model=CarrierVerifyResponse)
-async def verify(req: CarrierVerifyRequest) -> CarrierVerifyResponse:
-    resp = await verify_mc(req.mc_number)
-
-    if req.call_id:
-        with LOCK:
-            st = CALLS.get(req.call_id)
-            if st:
-                st.summary["mc_number"] = req.mc_number
-                st.summary["carrier_verified"] = resp.verified
-                st.summary["carrier_eligible"] = resp.eligible
-                st.summary["carrier_reason"] = resp.reason
-
-    return resp
+@router.post("/verify", response_model=CarrierVerifyResponse)
+async def verify(req: CarrierVerifyRequest):
+    try:
+        result = await verify_carrier(req.mc_number)
+        return result
+    except FmcsaError as e:
+        # 502 because this is an upstream dependency failure/misconfig
+        raise HTTPException(status_code=502, detail=str(e))

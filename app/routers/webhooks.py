@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends
 
 from app.core.security import require_api_key
 from app.core.state import LOCK, CALLS, METRICS, now_ts
-from app.models.api import WebhookCallStarted, WebhookCallEnded
-from app.models.domain import CallState
+from app.schemas.api import WebhookCallStarted, WebhookCallEnded
+from app.schemas.domain import CallState
 
 router = APIRouter(prefix="/webhooks/happyrobot", tags=["webhooks"], dependencies=[Depends(require_api_key)])
 

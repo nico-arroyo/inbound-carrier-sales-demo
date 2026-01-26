@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple
 from fastapi import HTTPException
 
 from app.core.state import LOADS
-from app.models.domain import Load
+from app.schemas.domain import Load
 
 
 def _norm(s: Optional[str]) -> str:

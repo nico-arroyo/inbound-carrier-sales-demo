@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from app.core.config import settings
 from app.core.state import LOCK, NEGOTIATIONS, METRICS, now_ts
-from app.models.domain import NegotiationPolicy, NegotiationState, Load
+from app.schemas.domain import NegotiationPolicy, NegotiationState, Load
 
 Decision = Literal["accept", "counter", "decline"]
 MAX_NEGOTIATION_ROUNDS = 3

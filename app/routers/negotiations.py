@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Path
 
 from app.core.security import require_api_key
 from app.core.state import LOCK, CALLS
-from app.models.api import (
+from app.schemas.api import (
     NegotiationStartRequest,
     NegotiationCounterRequest,
     NegotiationAcceptRequest,

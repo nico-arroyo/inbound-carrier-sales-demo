@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from app.models.domain import Load, NegotiationPolicy
+from app.schemas.domain import Load, NegotiationPolicy
 
 
 # ---- Webhooks
@@ -29,32 +29,19 @@ class WebhookCallEnded(BaseModel):
     summary: Dict[str, Any] = Field(default_factory=dict)
 
 
-# ---- Carrier verification
-class CarrierVerifyRequest(BaseModel):
-    call_id: Optional[str] = None
-    mc_number: str
-
-
-class CarrierInfo(BaseModel):
-    mc_number: str
-    legal_name: Optional[str] = None
-    status: Optional[str] = None
-
-
-class CarrierVerifyResponse(BaseModel):
-    verified: bool
-    eligible: bool
-    reason: str
-    carrier: CarrierInfo
-
 
 # ---- Loads
 class LoadSearchRequest(BaseModel):
     call_id: Optional[str] = None
     origin: Optional[str] = None
     destination: Optional[str] = None
+    origin_city: Optional[str] = None
+    origin_state: Optional[str] = None
+    destination_city: Optional[str] = None
+    destination_state: Optional[str] = None
+
     equipment_type: Optional[str] = None
-    limit: int = Field(default=5, ge=1, le=25)
+    limit: int = 3
 
 
 class LoadSearchResponse(BaseModel):
