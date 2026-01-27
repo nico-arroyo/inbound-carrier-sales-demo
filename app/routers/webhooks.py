@@ -4,6 +4,7 @@ from app.core.security import require_api_key
 from app.core.state import LOCK, CALLS, METRICS, NEGOTIATIONS, now_ts
 from app.schemas.api import WebhookCallEnded
 from app.schemas.domain import CallState, NegotiationState
+from app.services.call_store import upsert_call_record
 
 router = APIRouter(
     prefix="/webhooks/happyrobot",
@@ -151,7 +152,16 @@ def call_ended(payload: WebhookCallEnded):
         st.summary = payload.summary or {}
 
         # Attach minimal dashboard record used by /v1/metrics/dashboard/*
-        st.summary["dashboard"] = _build_dashboard_record(payload.call_id, payload)
+        dash = _build_dashboard_record(payload.call_id, payload)
+        st.summary["dashboard"] = dash
+
+        upsert_call_record(
+            record=dash,
+            started_at=st.started_at,
+            raw_outcome=payload.outcome,
+            raw_summary=st.summary,  # includes sentiment/verified + dashboard
+        )
+
 
         METRICS.calls_ended += 1
 

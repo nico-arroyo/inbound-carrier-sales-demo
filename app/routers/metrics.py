@@ -1,5 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 
+from sqlalchemy import select
+
+import app.db as db
+from app.models import CallRecord
+
 from app.core.security import require_api_key
 from app.core.state import LOCK, CALLS
 from app.schemas.api import MetricsOverview
@@ -14,20 +19,37 @@ def metrics_overview() -> MetricsOverview:
 
 
 def _dashboard_rows() -> list[dict]:
-    """
-    Returns per-call dashboard records stored at:
-      CALLS[call_id].summary["dashboard"]
-    """
-    rows: list[dict] = []
-    with LOCK:
-        for st in CALLS.values():
-            if isinstance(st.summary, dict):
-                dash = st.summary.get("dashboard")
-                if isinstance(dash, dict):
-                    rows.append(dash)
+    db.require_db()
 
-    rows.sort(key=lambda r: float(r.get("ended_at") or 0.0), reverse=True)
-    return rows
+    with db.SessionLocal() as session:
+        rows = (
+            session.execute(
+                select(CallRecord).order_by(CallRecord.ended_at.desc().nullslast())
+            )
+            .scalars()
+            .all()
+        )
+
+    out: list[dict] = []
+    for r in rows:
+        out.append(
+            {
+                "call_id": r.call_id,
+                "ended_at": r.ended_at,
+                "verified": r.verified,
+                "load_id": r.load_id,
+                "loadboard_rate": r.loadboard_rate,
+                "rounds": r.rounds,
+                "carrier_first_offer": r.carrier_first_offer,
+                "carrier_last_offer": r.carrier_last_offer,
+                "final_offer": r.final_offer,
+                "agreed": r.agreed,
+                "transfer_to_rep": r.transfer_to_rep,
+                "outcome": r.outcome,
+                "sentiment": r.sentiment,
+            }
+        )
+    return out
 
 
 @router.get("/dashboard/overview")
@@ -92,7 +114,6 @@ def dashboard_sentiment():
     rows = _dashboard_rows()
     counts: dict[str, int] = {}
     for r in rows:
-        # Keep exact platform values; bucket missing as "Unknown"
         key = r.get("sentiment") or "Unknown"
         counts[key] = counts.get(key, 0) + 1
     return counts
@@ -107,6 +128,8 @@ def dashboard_calls(limit: int = 50):
 
 @router.get("/dashboard/calls/{call_id}")
 def dashboard_call_detail(call_id: str):
+    # NOTE: this endpoint still reads in-memory CALLS state (fine for “recent call detail”),
+    # while the list/overview come from DB.
     with LOCK:
         st = CALLS.get(call_id)
         if not st:
