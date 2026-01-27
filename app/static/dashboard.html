@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inbound Carrier Sales — Metrics Dashboard</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold">Inbound Carrier Sales</h1>
+        <p class="text-slate-600">Metrics dashboard (Postgres-backed, survives redeploys)</p>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-slate-600">API Key</label>
+          <input id="apiKey" class="w-64 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                 placeholder="demo-key" />
+        </div>
+        <button id="refreshBtn"
+                class="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm hover:bg-slate-800">
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mt-6 flex gap-2">
+      <button data-tab="overview" class="tab-btn rounded-lg px-4 py-2 text-sm bg-white border border-slate-200">
+        Overview
+      </button>
+      <button data-tab="call" class="tab-btn rounded-lg px-4 py-2 text-sm bg-white border border-slate-200">
+        Call detail
+      </button>
+    </div>
+
+    <!-- Error banner -->
+    <div id="errorBanner" class="mt-4 hidden rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"></div>
+
+    <!-- OVERVIEW TAB -->
+    <section id="tab-overview" class="mt-6">
+      <!-- KPI cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="rounded-xl bg-white border border-slate-200 p-4">
+          <div class="text-xs text-slate-500">Total calls</div>
+          <div id="kpiTotal" class="text-2xl font-semibold mt-1">—</div>
+        </div>
+        <div class="rounded-xl bg-white border border-slate-200 p-4">
+          <div class="text-xs text-slate-500">Verified rate</div>
+          <div id="kpiVerified" class="text-2xl font-semibold mt-1">—</div>
+        </div>
+        <div class="rounded-xl bg-white border border-slate-200 p-4">
+          <div class="text-xs text-slate-500">Acceptance rate</div>
+          <div id="kpiAcceptance" class="text-2xl font-semibold mt-1">—</div>
+        </div>
+        <div class="rounded-xl bg-white border border-slate-200 p-4">
+          <div class="text-xs text-slate-500">Transfer rate</div>
+          <div id="kpiTransfer" class="text-2xl font-semibold mt-1">—</div>
+        </div>
+        <div class="rounded-xl bg-white border border-slate-200 p-4">
+          <div class="text-xs text-slate-500">Avg rounds</div>
+          <div id="kpiRounds" class="text-2xl font-semibold mt-1">—</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="rounded-xl bg-white border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold">Outcomes</h2>
+            <span class="text-xs text-slate-500">count</span>
+          </div>
+          <div class="mt-3">
+            <canvas id="chartOutcomes" height="140"></canvas>
+          </div>
+        </div>
+
+        <div class="rounded-xl bg-white border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold">Sentiment</h2>
+            <span class="text-xs text-slate-500">count</span>
+          </div>
+          <div class="mt-3">
+            <canvas id="chartSentiment" height="140"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calls table -->
+      <div class="mt-6 rounded-xl bg-white border border-slate-200 overflow-hidden">
+        <div class="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 class="text-sm font-semibold">Recent calls</h2>
+            <p class="text-xs text-slate-500">Click a call_id to open Call detail</p>
+          </div>
+
+          <div class="flex gap-2">
+            <input id="searchCallId" class="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                   placeholder="Search call_id…" />
+            <select id="limitSelect" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-slate-50 text-slate-600">
+              <tr>
+                <th class="text-left font-medium px-4 py-3">call_id</th>
+                <th class="text-left font-medium px-4 py-3">ended</th>
+                <th class="text-left font-medium px-4 py-3">verified</th>
+                <th class="text-left font-medium px-4 py-3">outcome</th>
+                <th class="text-left font-medium px-4 py-3">sentiment</th>
+                <th class="text-left font-medium px-4 py-3">load_id</th>
+                <th class="text-left font-medium px-4 py-3">rounds</th>
+              </tr>
+            </thead>
+            <tbody id="callsTbody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- CALL DETAIL TAB -->
+    <section id="tab-call" class="mt-6 hidden">
+      <div class="rounded-xl bg-white border border-slate-200 p-4">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-semibold">Call detail</h2>
+            <p class="text-xs text-slate-500">Loads DB-backed “dashboard” + in-memory “call_state/raw_summary” (if available)</p>
+          </div>
+
+          <div class="flex gap-2 items-center">
+            <input id="callIdInput" class="w-72 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                   placeholder="call_id (e.g., call_test_001)" />
+            <button id="loadCallBtn"
+                    class="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm hover:bg-slate-800">
+              Load
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="rounded-lg border border-slate-200 p-4">
+            <div class="text-xs text-slate-500 mb-2">Dashboard record</div>
+            <pre id="callDashboardJson" class="text-xs bg-slate-50 rounded-lg p-3 overflow-auto max-h-96">—</pre>
+          </div>
+
+          <div class="rounded-lg border border-slate-200 p-4">
+            <div class="text-xs text-slate-500 mb-2">Raw summary / call state</div>
+            <pre id="callRawJson" class="text-xs bg-slate-50 rounded-lg p-3 overflow-auto max-h-96">—</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <div class="mt-10 text-xs text-slate-500">
+      Tip: set API key once, then refresh. For Fly demo: use x-api-key header.
+    </div>
+  </div>
+
+  <script src="/static/dashboard.js"></script>
+</body>
+</html>
