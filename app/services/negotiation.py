@@ -27,11 +27,11 @@ def decide(policy: NegotiationPolicy, carrier_offer: float, round_num: int) -> T
     if policy.min <= offer <= policy.max:
         return "accept", None
 
-    if round_num >= policy.max_rounds:
+    if round_num > policy.max_rounds:
         return "decline", None
 
     if round_num == 1:
-        counter = policy.target
+        counter = policy.target + 0.25 * (offer - policy.target)
     elif round_num == 2:
         counter = policy.target + 0.5 * (offer - policy.target)
     else:
