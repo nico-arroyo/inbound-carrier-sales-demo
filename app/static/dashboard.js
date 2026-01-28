@@ -39,10 +39,24 @@ function fmtPct(x) {
 
 function fmtTs(sec) {
   if (!sec) return "—";
-  // ended_at in your API looks like unix seconds (float)
   const ms = Math.floor(Number(sec) * 1000);
   const d = new Date(ms);
   return d.toLocaleString();
+}
+
+function fmtDuration(sec) {
+  if (sec === null || sec === undefined) return "—";
+  const s = Math.max(0, Math.floor(Number(sec)));
+  if (!Number.isFinite(s)) return "—";
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  if (m <= 0) return `${r}s`;
+  return `${m}m ${String(r).padStart(2, "0")}s`;
+}
+
+function fmtCurrency(val) {
+  if (val === null || val === undefined) return "—";
+  return `$${Number(val).toLocaleString()}`;
 }
 
 function setActiveTab(tab) {
@@ -151,6 +165,11 @@ async function loadCallsTable() {
   renderCallsRows(filtered);
 }
 
+function setText(id, text) {
+  const el = $(id);
+  if (el) el.textContent = text;
+}
+
 async function loadCallDetail() {
   clearError();
   const callId = $("callIdInput").value.trim();
@@ -159,12 +178,44 @@ async function loadCallDetail() {
     return;
   }
 
-  // This endpoint is what you already have
   const data = await apiGet(`/v1/metrics/dashboard/calls/${encodeURIComponent(callId)}`);
 
-  $("callDashboardJson").textContent = JSON.stringify(data.dashboard ?? {}, null, 2);
-  const raw = { call_state: data.call_state ?? null, raw_summary: data.raw_summary ?? null };
-  $("callRawJson").textContent = JSON.stringify(raw, null, 2);
+  // Populate the formatted detail cards
+  setText("detailCallId", data.call_id || "—");
+  setText("detailVerified", data.verified !== null ? (data.verified ? "✓ Verified" : "✗ Not Verified") : "—");
+  setText("detailEndedAt", fmtTs(data.ended_at));
+  setText("detailOutcome", data.outcome || "—");
+  
+  setText("detailLoadId", data.load_id || "—");
+  setText("detailLoadboardRate", fmtCurrency(data.loadboard_rate));
+  setText("detailFinalOffer", fmtCurrency(data.final_offer));
+  setText("detailAgreed", data.agreed !== null ? (data.agreed ? "✓ Yes" : "✗ No") : "—");
+  
+  setText("detailRounds", data.rounds ?? "—");
+  setText("detailFirstOffer", fmtCurrency(data.carrier_first_offer));
+  setText("detailLastOffer", fmtCurrency(data.carrier_last_offer));
+  setText("detailSentiment", data.sentiment || "—");
+  
+  setText("detailTransfer", data.transfer_to_rep !== null ? (data.transfer_to_rep ? "✓ Yes" : "✗ No") : "—");
+  
+  // Calculate rate delta
+  let delta = "—";
+  if (data.final_offer !== null && data.loadboard_rate !== null) {
+    const diff = data.final_offer - data.loadboard_rate;
+    const sign = diff >= 0 ? "+" : "";
+    delta = `${sign}${fmtCurrency(diff)}`;
+  }
+  setText("detailDelta", delta);
+
+  // Display call summary
+  const s = String((data.summary ?? data.raw_summary ?? "")).trim();
+  setText("callSummary", s.length ? s : "No summary available");
+
+  // Show content, hide empty state
+  const content = $("callDetailContent");
+  const empty = $("callDetailEmpty");
+  if (content) content.classList.remove("hidden");
+  if (empty) empty.classList.add("hidden");
 }
 
 function wireUI() {

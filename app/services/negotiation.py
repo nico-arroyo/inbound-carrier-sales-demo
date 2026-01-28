@@ -74,7 +74,6 @@ def start(
         NEGOTIATIONS[call_id] = st
         METRICS.negotiations_started += 1
 
-        # If decision is an immediate decline, finalize now
         if decision == "decline":
             st.status = "declined"
             METRICS.negotiations_declined += 1

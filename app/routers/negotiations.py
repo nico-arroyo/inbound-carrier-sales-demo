@@ -10,11 +10,7 @@ from app.services.negotiation import (
     exists as negotiation_exists,
 )
 
-router = APIRouter(
-    prefix="/v1/negotiations",
-    tags=["negotiations"],
-    dependencies=[Depends(require_api_key)],
-)
+router = APIRouter(prefix="/v1/negotiations", tags=["negotiations"], dependencies=[Depends(require_api_key)],)
 
 
 @router.post("/step", response_model=NegotiationStepResponse)
@@ -24,7 +20,6 @@ def step(req: NegotiationStepRequest) -> NegotiationStepResponse:
 
     load = get_by_id(req.load_id)
 
-    # Round 1: initialize + decide in one place (service layer)
     if not negotiation_exists(req.call_id):
         st, decision, counter_offer = start(
             call_id=req.call_id,
@@ -33,10 +28,8 @@ def step(req: NegotiationStepRequest) -> NegotiationStepResponse:
             carrier_initial_offer=req.carrier_offer,
         )
     else:
-        # Round >=2: counter/accept/decline decision happens in service
         st, decision, counter_offer = do_counter(req.call_id, req.carrier_offer)
 
-    # If accepted at this step, finalize so workflow can transfer
     transfer = False
     final_rate = st.final_rate
 
@@ -44,7 +37,7 @@ def step(req: NegotiationStepRequest) -> NegotiationStepResponse:
         st = do_accept(req.call_id, req.carrier_offer)
         transfer = True
         final_rate = st.final_rate
-        counter_offer = None  # accepted means no counter
+        counter_offer = None
 
     return NegotiationStepResponse(
         call_id=req.call_id,

@@ -32,23 +32,21 @@ def _dashboard_rows() -> list[dict]:
 
     out: list[dict] = []
     for r in rows:
-        out.append(
-            {
-                "call_id": r.call_id,
-                "ended_at": r.ended_at,
-                "verified": r.verified,
-                "load_id": r.load_id,
-                "loadboard_rate": r.loadboard_rate,
-                "rounds": r.rounds,
-                "carrier_first_offer": r.carrier_first_offer,
-                "carrier_last_offer": r.carrier_last_offer,
-                "final_offer": r.final_offer,
-                "agreed": r.agreed,
-                "transfer_to_rep": r.transfer_to_rep,
-                "outcome": r.outcome,
-                "sentiment": r.sentiment,
-            }
-        )
+        out.append({
+            "call_id": r.call_id,
+            "ended_at": r.ended_at,
+            "verified": r.verified,
+            "load_id": r.load_id,
+            "loadboard_rate": r.loadboard_rate,
+            "rounds": r.rounds,
+            "carrier_first_offer": r.carrier_first_offer,
+            "carrier_last_offer": r.carrier_last_offer,
+            "final_offer": r.final_offer,
+            "agreed": r.agreed,
+            "transfer_to_rep": r.transfer_to_rep,
+            "outcome": r.outcome,
+            "sentiment": r.sentiment,
+        })
     return out
 
 
@@ -74,7 +72,7 @@ def dashboard_overview():
         else 0.0
     )
 
-    accepted = [r for r in rows if r.get("outcome") == "ACCEPTED_TRANSFERRED" or r.get("agreed") is True]
+    accepted = [r for r in rows if r.get("outcome") == "ACCEPTED" or r.get("agreed") is True]
     acceptance_rate = len(accepted) / total
 
     transferred = [r for r in rows if r.get("transfer_to_rep") is True]
@@ -126,29 +124,32 @@ def dashboard_calls(limit: int = 50):
     return rows[:limit]
 
 
-@router.get("/dashboard/calls/{call_id}")
-def dashboard_call_detail(call_id: str):
-    # NOTE: this endpoint still reads in-memory CALLS state (fine for “recent call detail”),
-    # while the list/overview come from DB.
-    with LOCK:
-        st = CALLS.get(call_id)
-        if not st:
-            raise HTTPException(status_code=404, detail="Call not found")
-        dash = None
-        if isinstance(st.summary, dict):
-            dash = st.summary.get("dashboard")
-        if not isinstance(dash, dict):
-            raise HTTPException(status_code=404, detail="No dashboard data for call (call may not be ended yet)")
+def _row_to_dashboard_dict(r: CallRecord) -> dict:
+    return {
+        "call_id": r.call_id,
+        "ended_at": r.ended_at,
+        "verified": r.verified,
+        "load_id": r.load_id,
+        "loadboard_rate": r.loadboard_rate,
+        "rounds": r.rounds,
+        "carrier_first_offer": r.carrier_first_offer,
+        "carrier_last_offer": r.carrier_last_offer,
+        "final_offer": r.final_offer,
+        "agreed": r.agreed,
+        "transfer_to_rep": r.transfer_to_rep,
+        "outcome": r.outcome,
+        "sentiment": r.sentiment,
+        "summary": r.summary,
+    }
 
-        return {
-            "dashboard": dash,
-            "call_state": {
-                "call_id": st.call_id,
-                "started_at": st.started_at,
-                "ended_at": st.ended_at,
-                "from_number": st.from_number,
-                "metadata": st.metadata,
-                "raw_outcome": st.outcome,
-            },
-            "raw_summary": st.summary,
-        }
+@router.get("/dashboard/calls/{call_id}")
+def dashboard_call(call_id: str):
+    with db.SessionLocal() as session:
+        row = session.execute(
+            select(CallRecord).where(CallRecord.call_id == call_id)
+        ).scalar_one_or_none()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Call not found")
+
+    return _row_to_dashboard_dict(row)

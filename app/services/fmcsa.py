@@ -49,7 +49,6 @@ async def verify_carrier(mc_number: str) -> Dict[str, Any]:
     payload = await fetch_carrier_by_mc(mc_number)
     allowed, city, state, dot = _extract_fields(payload, mc_number)
 
-    # Eligibility logic
     if allowed is None:
         return {
             "eligible": False,

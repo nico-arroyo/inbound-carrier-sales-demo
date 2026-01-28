@@ -5,7 +5,6 @@ from typing import Any, Dict, Literal, Optional
 from pydantic import BaseModel, Field
 
 
-# ---- Webhooks
 class WebhookCallStarted(BaseModel):
     call_id: str
     from_number: Optional[str] = None
@@ -27,7 +26,6 @@ class WebhookCallEnded(BaseModel):
     summary: Dict[str, Any] = Field(default_factory=dict)
 
 
-# ---- Metrics
 class MetricsOverview(BaseModel):
     calls_started: int
     calls_ended: int

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Inbound Carrier Sales — Metrics Dashboard</title>
+  <title>Inbound Carrier Sales – Metrics Dashboard</title>
 
   <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -18,7 +18,7 @@
     <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
       <div>
         <h1 class="text-2xl font-semibold">Inbound Carrier Sales</h1>
-        <p class="text-slate-600">Metrics dashboard (Postgres-backed, survives redeploys)</p>
+        <p class="text-slate-600">Metrics dashboard</p>
       </div>
 
       <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
@@ -140,7 +140,7 @@
         <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
           <div>
             <h2 class="text-sm font-semibold">Call detail</h2>
-            <p class="text-xs text-slate-500">Loads DB-backed “dashboard” + in-memory “call_state/raw_summary” (if available)</p>
+            <p class="text-xs text-slate-500">View comprehensive details for a specific call</p>
           </div>
 
           <div class="flex gap-2 items-center">
@@ -153,23 +153,111 @@
           </div>
         </div>
 
-        <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div class="rounded-lg border border-slate-200 p-4">
-            <div class="text-xs text-slate-500 mb-2">Dashboard record</div>
-            <pre id="callDashboardJson" class="text-xs bg-slate-50 rounded-lg p-3 overflow-auto max-h-96">—</pre>
+        <!-- Call Detail Cards -->
+        <div id="callDetailContent" class="mt-6 hidden">
+          <!-- Call Info Section -->
+          <div class="mb-6">
+            <h3 class="text-sm font-semibold mb-3">Call Information</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">Call ID</div>
+                <div id="detailCallId" class="text-sm font-mono font-medium">—</div>
+              </div>
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">Status</div>
+                <div id="detailVerified" class="text-sm font-medium">—</div>
+              </div>
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">Ended At</div>
+                <div id="detailEndedAt" class="text-sm font-medium">—</div>
+              </div>
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">Outcome</div>
+                <div id="detailOutcome" class="text-sm font-medium">—</div>
+              </div>
+            </div>
           </div>
 
-          <div class="rounded-lg border border-slate-200 p-4">
-            <div class="text-xs text-slate-500 mb-2">Raw summary / call state</div>
-            <pre id="callRawJson" class="text-xs bg-slate-50 rounded-lg p-3 overflow-auto max-h-96">—</pre>
+          <!-- Load Details Section -->
+          <div class="mb-6">
+            <h3 class="text-sm font-semibold mb-3">Load Details</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">Load ID</div>
+                <div id="detailLoadId" class="text-sm font-medium">—</div>
+              </div>
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">Loadboard Rate</div>
+                <div id="detailLoadboardRate" class="text-sm font-medium">—</div>
+              </div>
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">Final Offer</div>
+                <div id="detailFinalOffer" class="text-sm font-medium">—</div>
+              </div>
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">Agreed</div>
+                <div id="detailAgreed" class="text-sm font-medium">—</div>
+              </div>
+            </div>
           </div>
+
+          <!-- Negotiation Details Section -->
+          <div class="mb-6">
+            <h3 class="text-sm font-semibold mb-3">Negotiation Details</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">Rounds</div>
+                <div id="detailRounds" class="text-sm font-medium">—</div>
+              </div>
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">First Offer</div>
+                <div id="detailFirstOffer" class="text-sm font-medium">—</div>
+              </div>
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">Last Offer</div>
+                <div id="detailLastOffer" class="text-sm font-medium">—</div>
+              </div>
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">Sentiment</div>
+                <div id="detailSentiment" class="text-sm font-medium">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transfer Info Section -->
+          <div>
+            <h3 class="text-sm font-semibold mb-3">Additional Information</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">Transfer to Rep</div>
+                <div id="detailTransfer" class="text-sm font-medium">—</div>
+              </div>
+              <div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <div class="text-xs text-slate-500 mb-1">Rate Delta</div>
+                <div id="detailDelta" class="text-sm font-medium">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Call Summary Section -->
+          <div class="mt-6">
+            <h3 class="text-sm font-semibold mb-3">Call Summary</h3>
+            <div class="rounded-lg border border-slate-200 p-4 bg-slate-50">
+              <div id="callSummary" class="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="callDetailEmpty" class="mt-6 text-center py-12 text-slate-500 text-sm">
+          Enter a call ID and click Load to view details
         </div>
       </div>
     </section>
 
     <!-- Footer -->
     <div class="mt-10 text-xs text-slate-500">
-      Tip: set API key once, then refresh. For Fly demo: use x-api-key header.
+      Tip: set API key once, then refresh.
     </div>
   </div>
 

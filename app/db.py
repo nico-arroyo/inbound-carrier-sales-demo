@@ -11,15 +11,10 @@ class Base(DeclarativeBase):
 
 
 def init_db() -> None:
-    """
-    Initializes SQLAlchemy engine + SessionLocal and creates tables.
-    Safe to call multiple times.
-    """
     global engine, SessionLocal
 
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
-        # App can still run without DB; DB-backed endpoints should error clearly.
         return
 
     engine = create_engine(
@@ -29,7 +24,6 @@ def init_db() -> None:
     )
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
-    # Ensure models are registered before create_all
     from app import models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)

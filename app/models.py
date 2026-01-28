@@ -1,5 +1,4 @@
-from sqlalchemy import String, Float, Integer, Boolean, BigInteger
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import String, Float, Integer, Boolean, BigInteger, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db import Base
 
@@ -9,10 +8,8 @@ class CallRecord(Base):
 
     call_id: Mapped[str] = mapped_column(String, primary_key=True)
 
-    started_at: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     ended_at: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
-    # Business/dashboard fields
     outcome: Mapped[str | None] = mapped_column(String, nullable=True)
     sentiment: Mapped[str | None] = mapped_column(String, nullable=True)
     verified: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
@@ -28,6 +25,4 @@ class CallRecord(Base):
     agreed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     transfer_to_rep: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
-    # Raw payloads for debugging/auditing
-    raw_summary: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    raw_outcome: Mapped[str | None] = mapped_column(String, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)

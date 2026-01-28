@@ -27,7 +27,6 @@ class CallState(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     call_id: str
-    started_at: float
     ended_at: Optional[float] = None
     from_number: Optional[str] = None
     metadata: Dict[str, Any] = {}
