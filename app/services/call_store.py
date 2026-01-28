@@ -16,7 +16,6 @@ def upsert_call_record(record: dict, summary_text: str | None,):
         "load_id": record.get("load_id"),
         "loadboard_rate": record.get("loadboard_rate"),
         "rounds": record.get("rounds"),
-        "carrier_first_offer": record.get("carrier_first_offer"),
         "carrier_last_offer": record.get("carrier_last_offer"),
         "final_offer": record.get("final_offer"),
         "agreed": record.get("agreed"),

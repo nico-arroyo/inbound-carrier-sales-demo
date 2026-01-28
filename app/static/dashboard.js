@@ -192,7 +192,6 @@ async function loadCallDetail() {
   setText("detailAgreed", data.agreed !== null ? (data.agreed ? "✓ Yes" : "✗ No") : "—");
   
   setText("detailRounds", data.rounds ?? "—");
-  setText("detailFirstOffer", fmtCurrency(data.carrier_first_offer));
   setText("detailLastOffer", fmtCurrency(data.carrier_last_offer));
   setText("detailSentiment", data.sentiment || "—");
   

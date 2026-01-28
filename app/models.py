@@ -18,7 +18,6 @@ class CallRecord(Base):
     loadboard_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     rounds: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    carrier_first_offer: Mapped[float | None] = mapped_column(Float, nullable=True)
     carrier_last_offer: Mapped[float | None] = mapped_column(Float, nullable=True)
     final_offer: Mapped[float | None] = mapped_column(Float, nullable=True)
 

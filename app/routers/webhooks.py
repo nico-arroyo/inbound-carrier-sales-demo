@@ -50,7 +50,6 @@ def _build_dashboard_record(call_id: str, payload: WebhookCallEnded) -> dict:
     outcome = _classify_outcome(payload.outcome, negotiation, verified)
 
     rounds = None
-    carrier_first_offer = None
     carrier_last_offer = None
     final_offer = None
     load_id = None
@@ -64,7 +63,6 @@ def _build_dashboard_record(call_id: str, payload: WebhookCallEnded) -> dict:
         loadboard_rate = negotiation.load.loadboard_rate
 
         carrier_last_offer = negotiation.last_carrier_offer
-        carrier_first_offer = negotiation.last_carrier_offer if negotiation.round == 1 else None
 
         final_offer = negotiation.final_rate
 
@@ -88,7 +86,6 @@ def _build_dashboard_record(call_id: str, payload: WebhookCallEnded) -> dict:
         "load_id": load_id,
         "loadboard_rate": loadboard_rate,
         "rounds": rounds,
-        "carrier_first_offer": carrier_first_offer,
         "carrier_last_offer": carrier_last_offer,
         "final_offer": final_offer,
         "agreed": agreed,
